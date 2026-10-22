@@ -9,6 +9,8 @@ import SwiftUI
 
 @main
 struct SuperCursorApp: App {
+    @State private var engine = CursorEngine();
+    
     var body: some Scene {
         MenuBarExtra("SuperCursor", systemImage: "cursorarrow.rays") {
             SettingsLink {
@@ -20,6 +22,11 @@ struct SuperCursorApp: App {
 
             Button("Quit SuperCursor") {
                 NSApplication.shared.terminate(nil)
+            }
+            .keyboardShortcut("q")
+            
+            Toggle(isOn: $engine.isEnabled){
+                Text("Hi mom")
             }
             .keyboardShortcut("q")
         }

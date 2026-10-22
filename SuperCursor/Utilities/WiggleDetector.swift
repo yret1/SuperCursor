@@ -32,7 +32,7 @@ struct WiggleDetector {
         }
         lastSample = sample
 
-        //Idk man, maybe it bugged
+        //Vertical only movement
         guard let movement = evaluateDirection(from: prev, to: sample) else {
             return false
         }
