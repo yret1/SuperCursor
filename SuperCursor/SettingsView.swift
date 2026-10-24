@@ -11,6 +11,11 @@ enum SettingsKey {
     static let requiredReversals = "requiredReversals"
     static let minSegmentDistance = "minSegmentDistance"
     static let timeFrame = "timeFrame"
+    
+    static let defaults: [String: Any] = [
+        Self.requiredReversals: 4, Self.minSegmentDistance: 40.0,
+        Self.timeFrame: 1.0,
+    ]
 }
 
 struct SettingsView: View {
@@ -29,7 +34,8 @@ struct SettingsView: View {
 
 struct GeneralSettingsView: View {
     @AppStorage(SettingsKey.requiredReversals) private var requiredReversals = 4
-    @AppStorage(SettingsKey.minSegmentDistance) private var minSegmentDistance = 40.0
+    @AppStorage(SettingsKey.minSegmentDistance) private var minSegmentDistance =
+        40.0
     @AppStorage(SettingsKey.timeFrame) private var timeFrame = 1.0
 
     var body: some View {
@@ -50,14 +56,18 @@ struct GeneralSettingsView: View {
 
                 LabeledContent("Time window") {
                     Slider(value: $timeFrame, in: 0.3...1.5, step: 0.1)
-                    Text("\(timeFrame, format: .number.precision(.fractionLength(1))) s")
-                        .monospacedDigit()
-                        .frame(width: 50, alignment: .trailing)
+                    Text(
+                        "\(timeFrame, format: .number.precision(.fractionLength(1))) s"
+                    )
+                    .monospacedDigit()
+                    .frame(width: 50, alignment: .trailing)
                 }
             } header: {
                 Text("Wiggle detection")
             } footer: {
-                Text("Shake the pointer quickly left and right to activate SuperCursor. These settings control how hard and how fast you need to shake.")
+                Text(
+                    "Shake the pointer quickly left and right to activate SuperCursor. These settings control how hard and how fast you need to shake."
+                )
             }
         }
         .formStyle(.grouped)
