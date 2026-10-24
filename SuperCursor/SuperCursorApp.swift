@@ -6,27 +6,33 @@
 //
 
 import SwiftUI
-import SwiftData
 
 @main
 struct SuperCursorApp: App {
-    var sharedModelContainer: ModelContainer = {
-        let schema = Schema([
-            Item.self,
-        ])
-        let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
-
-        do {
-            return try ModelContainer(for: schema, configurations: [modelConfiguration])
-        } catch {
-            fatalError("Could not create ModelContainer: \(error)")
-        }
-    }()
-
+    @State private var engine = CursorEngine();
+    
     var body: some Scene {
-        WindowGroup {
-            ContentView()
+        MenuBarExtra("SuperCursor", systemImage: "cursorarrow.rays") {
+            SettingsLink {
+                Text("Settings…")
+            }
+            .keyboardShortcut(",")
+
+            Divider()
+
+            Button("Quit SuperCursor") {
+                NSApplication.shared.terminate(nil)
+            }
+            .keyboardShortcut("q")
+            
+            Toggle(isOn: $engine.isEnabled){
+                Text("Hi mom")
+            }
+            .keyboardShortcut("q")
         }
-        .modelContainer(sharedModelContainer)
+
+        Settings {
+            SettingsView()
+        }
     }
 }
