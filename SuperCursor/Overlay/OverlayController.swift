@@ -13,6 +13,7 @@ final class OverlayController {
     private let pulse = PulseWindow()
     private var panel: OverlayPanel?
     private var clickOutsideMonitor: Any?
+    private var captureTask: Task<Void, Never>?
 
     private(set) var isVisible = false
 
@@ -41,6 +42,7 @@ final class OverlayController {
         isVisible = true
         panel.makeKeyAndOrderFront(nil)
         watchForClicksOutside()
+        startCapture(around: cursor)
     }
 
     func toggle(at cursor: CGPoint) {
@@ -52,11 +54,39 @@ final class OverlayController {
         guard isVisible else { return }
         isVisible = false
 
+        captureTask?.cancel()
+        captureTask = nil
+
         if let clickOutsideMonitor {
             NSEvent.removeMonitor(clickOutsideMonitor)
             self.clickOutsideMonitor = nil
         }
         panel?.orderOut(nil)
+    }
+
+    /// Captures the screen around the pointer into the panel. SuperCursor's own windows
+    /// are left out of the capture, so the panel can already be showing.
+    private func startCapture(around cursor: CGPoint) {
+        captureTask?.cancel()
+
+        guard ScreenCapturer.hasPermission else {
+            ScreenCapturer.requestPermission()
+            model.capture = .needsPermission
+            return
+        }
+
+        model.capture = .capturing
+        captureTask = Task { [model] in
+            do {
+                let capture = try await ScreenCapturer.capture(around: cursor)
+                try Task.checkCancellation()
+                model.capture = .captured(capture)
+            } catch is CancellationError {
+                // A newer capture or closing the panel replaced this one.
+            } catch {
+                model.capture = .failed(error.localizedDescription)
+            }
+        }
     }
 
     private func makePanel() -> OverlayPanel {
