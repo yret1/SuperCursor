@@ -8,6 +8,7 @@
 import SwiftUI
 
 enum SettingsKey {
+    static let isEnabled = "isEnabled"
     static let requiredReversals = "requiredReversals"
     static let minSegmentDistance = "minSegmentDistance"
     static let timeFrame = "timeFrame"
@@ -28,9 +29,9 @@ struct SettingsView: View {
 }
 
 struct GeneralSettingsView: View {
-    @AppStorage(SettingsKey.requiredReversals) private var requiredReversals = 4
-    @AppStorage(SettingsKey.minSegmentDistance) private var minSegmentDistance = 40.0
-    @AppStorage(SettingsKey.timeFrame) private var timeFrame = 1.0
+    @AppStorage(SettingsKey.requiredReversals) private var requiredReversals = WiggleSettings.defaults.requiredReversals
+    @AppStorage(SettingsKey.minSegmentDistance) private var minSegmentDistance = WiggleSettings.defaults.minSegmentDistance
+    @AppStorage(SettingsKey.timeFrame) private var timeFrame = WiggleSettings.defaults.timeFrame
 
     var body: some View {
         Form {
