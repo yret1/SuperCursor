@@ -5,56 +5,100 @@
 //  Created by Simon Gustavsson on 2026-10-21.
 //
 import Foundation
-import Playgrounds
+
+/// How hard and how fast the pointer must be shaken. Backed by the values in Settings.
+struct WiggleSettings: Equatable {
+    var requiredReversals = 4
+    var minSegmentDistance = 40.0
+    var timeFrame: TimeInterval = 1.0
+
+    static let defaults = WiggleSettings()
+
+    /// Reads the saved settings, using the defaults for anything not saved yet.
+    static func load(from store: UserDefaults) -> WiggleSettings {
+        WiggleSettings(
+            requiredReversals: store.object(forKey: SettingsKey.requiredReversals) as? Int
+                ?? defaults.requiredReversals,
+            minSegmentDistance: store.object(forKey: SettingsKey.minSegmentDistance) as? Double
+                ?? defaults.minSegmentDistance,
+            timeFrame: store.object(forKey: SettingsKey.timeFrame) as? Double
+                ?? defaults.timeFrame
+        )
+    }
+}
+
+/// One continuous horizontal stroke.
 struct Segment {
     var direction: Direction
     var distance: Double
+    var counted = false
 }
 
 struct WiggleDetector {
+    var settings: WiggleSettings
 
-    // User settable
-    var requiredReversals: Int = 4
-    var minSegmentDistance: Double = 40
-    var timeFrame: TimeInterval = 1
+    /// Backwards movement shorter than this is treated as hand jitter and doesn't end the stroke.
+    static let jitterTolerance = 4.0
 
     // Private state
     private var currentSegment: Segment?
+    private var previousSegmentWasLongEnough = false
+    private var pendingReverseDistance = 0.0
     private var lastSample: MouseSample?
     private var reversalTimes: [TimeInterval] = []
 
+    init(settings: WiggleSettings = .defaults) {
+        self.settings = settings
+    }
+
     mutating func process(_ sample: MouseSample) -> Bool {
-       
-        //GUard first call so that we always have a sample
+
+        // Guard first call so that we always have a previous sample
         guard let prev = lastSample else {
             lastSample = sample
             return false
         }
         lastSample = sample
 
-        //Vertical only movement
+        // Vertical only movement
         guard let movement = evaluateDirection(from: prev, to: sample) else {
             return false
         }
 
-        //If a segment exists but were still going the same way, append distance
-        if let segment = currentSegment, segment.direction == movement.direction {
-            currentSegment?.distance += movement.distance
+        guard var segment = currentSegment else {
+            currentSegment = Segment(direction: movement.direction, distance: movement.distance)
             return false
         }
 
-        //Handle no segment or flipped
-        if let segment = currentSegment, segment.distance >= minSegmentDistance {
+        if movement.direction == segment.direction {
+            segment.distance += movement.distance
+            pendingReverseDistance = 0
+        } else {
+            pendingReverseDistance += movement.distance
+            if pendingReverseDistance < Self.jitterTolerance {
+                return false
+            }
+            previousSegmentWasLongEnough = segment.distance >= settings.minSegmentDistance
+            segment = Segment(direction: movement.direction, distance: pendingReverseDistance)
+            pendingReverseDistance = 0
+        }
+
+        // A direction change counts once a stroke covers the minimum distance
+        // right after another stroke that did too.
+        if !segment.counted, previousSegmentWasLongEnough,
+            segment.distance >= settings.minSegmentDistance
+        {
+            segment.counted = true
             reversalTimes.append(sample.timestamp)
         }
-        currentSegment = Segment(direction: movement.direction, distance: movement.distance)
+        currentSegment = segment
 
-        //Remove reversals outside the timeframe
-        let cutoff = sample.timestamp - timeFrame
+        // Remove reversals outside the timeframe
+        let cutoff = sample.timestamp - settings.timeFrame
         reversalTimes.removeAll { $0 < cutoff }
 
-        //Fire the supercursor :)
-        if reversalTimes.count >= requiredReversals {
+        // Fire the supercursor :)
+        if reversalTimes.count >= settings.requiredReversals {
             reset()
             return true
         }
@@ -63,35 +107,9 @@ struct WiggleDetector {
 
     private mutating func reset() {
         currentSegment = nil
+        previousSegmentWasLongEnough = false
+        pendingReverseDistance = 0
         lastSample = nil
         reversalTimes.removeAll()
     }
-}
-
-#Playground {
-    // Builds samples from x positions, spaced `interval` seconds apart
-    func makeSamples(xs: [Double], interval: TimeInterval) -> [MouseSample] {
-        xs.enumerated().map { index, x in
-            MouseSample(
-                position: CGPoint(x: x, y: 0),
-                timestamp: Double(index) * interval
-            )
-        }
-    }
-
-    // Feeds samples to a fresh detector and reports where it fires
-    func run(_ name: String, _ samples: [MouseSample]) {
-        var detector = WiggleDetector()
-        print("--- \(name) ---")
-        for (index, sample) in samples.enumerated() {
-            if detector.process(sample) {
-                print("Wiggle detected at sample \(index)")
-            }
-        }
-        print("done")
-    }
-
-    run("Fast wiggle", makeSamples(xs: [0, 60, 0, 60, 0, 60], interval: 0.1))
-    run("Slow wiggle", makeSamples(xs: [0, 60, 0, 60, 0, 60], interval: 0.5))
-    run("Small jitter", makeSamples(xs: [0, 10, 0, 10, 0, 10, 0, 10], interval: 0.1))
 }
