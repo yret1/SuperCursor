@@ -24,7 +24,7 @@ enum Direction {
 
 
 
-//We eval the actuall usage
+/// Horizontal direction and distance moved between two samples. Distance is always positive.
 func evaluateDirection(from: MouseSample, to: MouseSample) -> (direction: Direction, distance: Double)? {
     let dx = to.position.x - from.position.x;
     
@@ -38,7 +38,7 @@ func evaluateDirection(from: MouseSample, to: MouseSample) -> (direction: Direct
             return( .right, dx)
         }
     
-    return (.left, dx)
+    return (.left, -dx)
 }
 
 // Activate the overlay things
