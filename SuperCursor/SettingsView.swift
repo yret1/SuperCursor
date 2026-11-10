@@ -9,6 +9,7 @@ import SwiftUI
 
 enum SettingsKey {
     static let isEnabled = "isEnabled"
+    static let hotKeyEnabled = "hotKeyEnabled"
     static let requiredReversals = "requiredReversals"
     static let minSegmentDistance = "minSegmentDistance"
     static let timeFrame = "timeFrame"
@@ -32,6 +33,7 @@ struct GeneralSettingsView: View {
     @AppStorage(SettingsKey.requiredReversals) private var requiredReversals = WiggleSettings.defaults.requiredReversals
     @AppStorage(SettingsKey.minSegmentDistance) private var minSegmentDistance = WiggleSettings.defaults.minSegmentDistance
     @AppStorage(SettingsKey.timeFrame) private var timeFrame = WiggleSettings.defaults.timeFrame
+    @AppStorage(SettingsKey.hotKeyEnabled) private var hotKeyEnabled = true
 
     var body: some View {
         Form {
@@ -59,6 +61,14 @@ struct GeneralSettingsView: View {
                 Text("Wiggle detection")
             } footer: {
                 Text("Shake the pointer quickly left and right to activate SuperCursor. These settings control how hard and how fast you need to shake.")
+            }
+
+            Section {
+                Toggle("Open with ⌥Space", isOn: $hotKeyEnabled)
+            } header: {
+                Text("Keyboard shortcut")
+            } footer: {
+                Text("Press ⌥Space to open or close SuperCursor at the pointer.")
             }
         }
         .formStyle(.grouped)

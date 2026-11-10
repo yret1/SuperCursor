@@ -8,10 +8,17 @@
 import AppKit
 import Observation
 
+/// Watches for the two ways to summon SuperCursor: wiggling the pointer and the keyboard shortcut.
 @MainActor
 @Observable
 final class CursorEngine {
+    enum Trigger { case wiggle, hotKey }
+
+    /// Called when SuperCursor is summoned.
+    @ObservationIgnored var onTrigger: ((Trigger) -> Void)?
+
     private let store: UserDefaults
+    private let hotKey: HotKeyRegistering
     @ObservationIgnored private var detector: WiggleDetector
 
     // Monitor tokens
@@ -24,15 +31,22 @@ final class CursorEngine {
             guard isEnabled != oldValue else { return }
             store.set(isEnabled, forKey: SettingsKey.isEnabled)
             isEnabled ? enable() : disable()
+            updateHotKey()
         }
     }
 
     var wiggleSettings: WiggleSettings { detector.settings }
 
-    init(store: UserDefaults = .standard) {
+    init(store: UserDefaults = .standard, hotKey: HotKeyRegistering? = nil) {
+        let hotKey = hotKey ?? HotKey()
         self.store = store
+        self.hotKey = hotKey
         self.detector = WiggleDetector(settings: .load(from: store))
         self.isEnabled = store.object(forKey: SettingsKey.isEnabled) as? Bool ?? true
+
+        hotKey.onPress = { [weak self] in
+            self?.onTrigger?(.hotKey)
+        }
 
         // Pick up changes made in the Settings window while running
         settingsObserver = NotificationCenter.default.addObserver(
@@ -48,12 +62,21 @@ final class CursorEngine {
         if isEnabled {
             enable()
         }
+        updateHotKey()
     }
 
     isolated deinit {
         disable()
+        hotKey.unregister()
         if let settingsObserver {
             NotificationCenter.default.removeObserver(settingsObserver)
+        }
+    }
+
+    /// Feeds one pointer position to the wiggle detector.
+    func process(_ sample: MouseSample) {
+        if detector.process(sample) {
+            onTrigger?(.wiggle)
         }
     }
 
@@ -86,18 +109,22 @@ final class CursorEngine {
         detector = WiggleDetector(settings: detector.settings)
     }
 
+    private func updateHotKey() {
+        let wanted = isEnabled && (store.object(forKey: SettingsKey.hotKeyEnabled) as? Bool ?? true)
+        wanted ? hotKey.register() : hotKey.unregister()
+    }
+
     private func reloadSettings() {
         detector.settings = WiggleSettings.load(from: store)
+        updateHotKey()
     }
 
     private func handle(_ event: NSEvent) {
-        let sample = MouseSample(
-            position: NSEvent.mouseLocation,
-            timestamp: event.timestamp
+        process(
+            MouseSample(
+                position: NSEvent.mouseLocation,
+                timestamp: event.timestamp
+            )
         )
-
-        if detector.process(sample) {
-            NSSound.beep()
-        }
     }
 }
