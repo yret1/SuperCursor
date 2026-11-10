@@ -9,14 +9,15 @@ import SwiftUI
 
 @main
 struct SuperCursorApp: App {
-    @State private var engine = CursorEngine();
-    
+    @State private var engine = CursorEngine()
+
     var body: some Scene {
         MenuBarExtra("SuperCursor", systemImage: "cursorarrow.rays") {
-            SettingsLink {
-                Text("Settings…")
-            }
-            .keyboardShortcut(",")
+            Toggle("Enabled", isOn: $engine.isEnabled)
+
+            Divider()
+
+            OpenSettingsButton()
 
             Divider()
 
@@ -24,15 +25,24 @@ struct SuperCursorApp: App {
                 NSApplication.shared.terminate(nil)
             }
             .keyboardShortcut("q")
-            
-            Toggle(isOn: $engine.isEnabled){
-                Text("Hi mom")
-            }
-            .keyboardShortcut("q")
         }
 
         Settings {
             SettingsView()
         }
+    }
+}
+
+/// Opens Settings in front of other apps. A menu bar app is never the active app,
+/// so without activating first the window opens behind whatever you were using.
+private struct OpenSettingsButton: View {
+    @Environment(\.openSettings) private var openSettings
+
+    var body: some View {
+        Button("Settings…") {
+            NSApp.activate()
+            openSettings()
+        }
+        .keyboardShortcut(",")
     }
 }
