@@ -40,7 +40,11 @@ final class HotKey: HotKeyRegistering {
         unregister()
     }
 
+    // DIAGNOSTIC (temporary): skips Carbon registration to test whether it breaks menu clicks.
+    private static let diagnosticSkipRegistration = true
+
     func register() {
+        if Self.diagnosticSkipRegistration { return }
         guard hotKeyRef == nil else { return }
 
         var pressed = EventTypeSpec(
