@@ -9,7 +9,20 @@ import SwiftUI
 
 @main
 struct SuperCursorApp: App {
-    @State private var engine = CursorEngine()
+    @State private var engine: CursorEngine
+
+    init() {
+        let overlay = OverlayController()
+        let engine = CursorEngine()
+        engine.onTrigger = { trigger in
+            let cursor = NSEvent.mouseLocation
+            switch trigger {
+            case .wiggle: overlay.show(at: cursor)
+            case .hotKey: overlay.toggle(at: cursor)
+            }
+        }
+        _engine = State(initialValue: engine)
+    }
 
     var body: some Scene {
         MenuBarExtra("SuperCursor", systemImage: "cursorarrow.rays") {
